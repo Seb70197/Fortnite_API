@@ -20,7 +20,7 @@ params = urllib.parse.quote_plus(
 #creates the SQLAlchemy engine using the connection parameters
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
-def verify_api_key(x_api_key: str = Header(...)):
+def verify_api_key(x_api_key: str = Header(None)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
