@@ -20,9 +20,8 @@ params = urllib.parse.quote_plus(
 #creates the SQLAlchemy engine using the connection parameters
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
-def verify_api_key(request: Request, x_api_key: str = Header(None)):
-    if request.url.path in ["/", "/docs", "/openapi.json"]:
-        return
+def verify_api_key(x_api_key: str = Header(None)):
+
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -32,8 +31,9 @@ def health_check():
     return {"status": "API is running"}
 
 #define an endpoint to get distinct player IDs and EPIC IDs
-@app.get("/players", dependencies=[Depends(verify_api_key)])
-def get_player_ids():
+@app.get("/players")
+def get_player_ids(x_api_key: str = Header(None)):
+    verify_api_key(x_api_key)
     try:
         with engine.connect() as conn:
             query = text("SELECT DISTINCT PLAYER_ID, EPIC_ID FROM fortnite_player")
@@ -46,8 +46,9 @@ def get_player_ids():
         raise HTTPException(status_code=500, detail=str(e))
     
 #define an endpoint to get player stats
-@app.get("/stats", dependencies=[Depends(verify_api_key)])
-def get_player_stats():
+@app.get("/stats")
+def get_player_stats(x_api_key: str = Header(None)):
+    verify_api_key(x_api_key)  
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM fortnite_player_stats")
@@ -60,8 +61,9 @@ def get_player_stats():
         raise HTTPException(status_code=500, detail=str(e))
     
 #define an endpoint to get player stats history
-@app.get("/stats_hist", dependencies=[Depends(verify_api_key)])
-def get_player_stats_hist():
+@app.get("/stats_hist")
+def get_player_stats_hist(x_api_key: str = Header(None)):
+    verify_api_key(x_api_key)
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM fortnite_player_stats_hist")
