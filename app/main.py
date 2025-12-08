@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Depends
 from sqlalchemy import create_engine, text
 from app.config import settings
 import urllib
@@ -20,16 +20,18 @@ params = urllib.parse.quote_plus(
 #creates the SQLAlchemy engine using the connection parameters
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
+def verify_api_key(x_api_key: str = Header(...)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 #define a root endpoint for health check
 @app.get("/")
 def health_check():
     return {"status": "API is running"}
 
 #define an endpoint to get distinct player IDs and EPIC IDs
-@app.get("/players")
-def get_player_ids(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+@app.get("/players", dependencies=[Depends(verify_api_key)])
+def get_player_ids():
     try:
         with engine.connect() as conn:
             query = text("SELECT DISTINCT PLAYER_ID, EPIC_ID FROM fortnite_player")
@@ -42,10 +44,8 @@ def get_player_ids(x_api_key: str = Header(...)):
         raise HTTPException(status_code=500, detail=str(e))
     
 #define an endpoint to get player stats
-@app.get("/stats")
-def get_player_stats(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+@app.get("/stats", dependencies=[Depends(verify_api_key)])
+def get_player_stats():
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM fortnite_player_stats")
@@ -58,11 +58,8 @@ def get_player_stats(x_api_key: str = Header(...)):
         raise HTTPException(status_code=500, detail=str(e))
     
 #define an endpoint to get player stats history
-@app.get("/stats_hist")
-
-def get_player_stats_hist(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+@app.get("/stats_hist", dependencies=[Depends(verify_api_key)])
+def get_player_stats_hist():
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM fortnite_player_stats_hist")
