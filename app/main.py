@@ -6,6 +6,8 @@ import urllib
 #call the FastAPI constructor to create a new app instance
 app = FastAPI()
 
+API_KEY = settings.API_KEY
+
 #defines the database connection parameters
 params = urllib.parse.quote_plus(
     f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -25,7 +27,9 @@ def health_check():
 
 #define an endpoint to get distinct player IDs and EPIC IDs
 @app.get("/players")
-def get_player_ids():
+def get_player_ids(x_api_key: str = Header(...)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with engine.connect() as conn:
             query = text("SELECT DISTINCT PLAYER_ID, EPIC_ID FROM fortnite_player")
@@ -39,7 +43,9 @@ def get_player_ids():
     
 #define an endpoint to get player stats
 @app.get("/stats")
-def get_player_stats():
+def get_player_stats(x_api_key: str = Header(...)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM fortnite_player_stats")
@@ -53,7 +59,10 @@ def get_player_stats():
     
 #define an endpoint to get player stats history
 @app.get("/stats_hist")
-def get_player_stats_hist():
+
+def get_player_stats_hist(x_api_key: str = Header(...)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM fortnite_player_stats_hist")
