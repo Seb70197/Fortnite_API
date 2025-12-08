@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from sqlalchemy import create_engine, text
 from app.config import settings
 import urllib
@@ -20,7 +20,9 @@ params = urllib.parse.quote_plus(
 #creates the SQLAlchemy engine using the connection parameters
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
-def verify_api_key(x_api_key: str = Header(None)):
+def verify_api_key(request: Request, x_api_key: str = Header(None)):
+    if request.url.path in ["/", "/docs", "/openapi.json"]:
+        return
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
