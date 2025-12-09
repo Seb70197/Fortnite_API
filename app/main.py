@@ -19,6 +19,7 @@ params = urllib.parse.quote_plus(
     f"PWD={settings.DB_PASSWORD};"
     f"Encrypt=yes;"
     f"TrustServerCertificate=no;")
+
 #creates the SQLAlchemy engine using the connection parameters
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
