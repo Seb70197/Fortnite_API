@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy import create_engine, text
 from app.config import settings
+from pydantic import BaseModel
 import urllib
+import bcrypt
 
 #call the FastAPI constructor to create a new app instance
 app = FastAPI()
@@ -22,6 +24,10 @@ params = urllib.parse.quote_plus(
 
 #creates the SQLAlchemy engine using the connection parameters
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
+
+class LoginRequest(BaseModel):
+    user_id: str
+    password: str
 
 def verify_api_key(api_key: str = Depends(api_key_header)):
 
@@ -74,3 +80,62 @@ def get_player_stats_hist():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.put("/player_create", dependencies=[Depends(verify_api_key)])
+def create_player(request: Request):
+    try:
+        player_data = request.json()
+        player_id = player_data.get("PLAYER_ID")
+        epic_id = player_data.get("EPIC_ID")
+        
+        if not player_id or not epic_id:
+            raise HTTPException(status_code=400, detail="PLAYER_ID and EPIC_ID are required")
+        
+        with engine.connect() as conn:
+            query = text("INSERT INTO fortnite_player (PLAYER_ID, EPIC_ID) VALUES (:player_id, :epic_id)")
+            conn.execute(query, {"player_id": player_id, "epic_id": epic_id})
+            conn.commit()
+            
+            return {"message": "Player created successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+def hash_password(password: str) -> str:
+    """encrypt the password entered by the user
+
+    Args:
+        password (str): The plain text password to be hashed
+
+    Returns:
+        str: The hashed password
+    """
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify a plain text password against a hashed password
+
+    Args:
+        password (str): The plain text password to verify
+        hashed (str): The hashed password to compare against
+
+    Returns:
+        bool: True if the password matches the hash, False otherwise
+    """
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+@app.post("/login")
+def login(data : LoginRequest):
+
+    with engine.connect() as conn:
+        query = text("SELECT password_hash FROM fortnite_player WHERE player_id = :uid")
+        row = conn.execute(query, {"uid": data.user_id}).fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not verify_password(data.password, row.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid password")
+    
+    return {"message": "Login successful"}
+    
